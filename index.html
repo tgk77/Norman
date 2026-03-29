@@ -121,7 +121,7 @@
     // 3. BRAIN: Google Gemini AI
     async function askGemini(question) {
         status.innerText = "Thinking...";
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent?key=${API_KEY}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=AIzaSyAqpNL10AYzBzwyc2BuXMG-2nBbquZiqX0${API_KEY}`;
         
         try {
             const response = await fetch(url, {
