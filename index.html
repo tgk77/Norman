@@ -9,40 +9,57 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#000000">
     <link rel="apple-touch-icon" href="icon.png">
-<style>
-    body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; height: 100vh; width: 100vw; }
-    #container { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; }
-    
-    .eyes { display: flex; gap: 60px; margin-bottom: 30px; pointer-events: none; transition: 0.3s; }
-    
-    /* This wrapper handles the SQUINT */
-    .eye-wrapper { transition: 0.3s; }
-    .squint { transform: scaleY(0.2); }
 
-    /* This handles the BLINK and COLOR */
-    .eye { width: 60px; height: 60px; background: #fff; border-radius: 50%; transition: background 0.3s; }
-    .blink { animation: blink 4s infinite; }
-    .listening-glow { background: #00ff00 !important; box-shadow: 0 0 15px #00ff00; }
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; height: 100vh; width: 100vw; user-select: none; }
+        #container { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; }
+        
+        /* Layout */
+        .eyes { display: flex; gap: 60px; margin-bottom: 30px; pointer-events: none; }
+        .eye-wrapper { transition: transform 0.3s ease; }
+        
+        /* The SQUINT Logic */
+        .squint { transform: scaleY(0.25); }
+        
+        /* The EYE Logic */
+        .eye { width: 60px; height: 60px; background: #fff; border-radius: 50%; transition: background 0.3s, box-shadow 0.3s; }
+        .blink { animation: blink 4s infinite; }
+        .listening-glow { background: #00ff00 !important; box-shadow: 0 0 20px #00ff00; }
 
-    @keyframes blink { 0%, 90%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
-    
-    #mouth { width: 50px; height: 10px; background: #fff; border-radius: 20px; transition: 0.1s; pointer-events: none; }
-    #status { position: absolute; bottom: 30px; color: #444; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 3px; }
-    #speech-out { position: absolute; top: 60px; color: #fff; width: 85%; text-align: center; font-size: 1.1rem; }
-    #controls { position: absolute; bottom: 60px; z-index: 5; color: #444; font-size: 0.7rem; }
-</style>
+        @keyframes blink { 0%, 90%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+        
+        #mouth { width: 50px; height: 10px; background: #fff; border-radius: 20px; transition: 0.1s; pointer-events: none; }
+        #status { position: absolute; bottom: 30px; color: #444; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 3px; }
+        #speech-out { position: absolute; top: 60px; color: #fff; width: 85%; text-align: center; font-size: 1.1rem; opacity: 0.8; }
+        
+        /* Controls Layout */
+        #controls { position: absolute; bottom: 60px; z-index: 5; color: #666; font-size: 0.7rem; display: flex; flex-direction: column; gap: 15px; align-items: center;}
+        
+        #overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:10; display:flex; justify-content:center; align-items:center; }
+        button { padding: 20px 40px; font-size: 1.2rem; background: #fff; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; }
+        .small-btn { padding: 8px 15px; font-size: 0.6rem; background: #222; color: #aaa; }
+    </style>
+</head>
+<body>
+
+<div id="overlay">
+    <button onclick="setup()">WAKE UP BRENDA</button>
+</div>
 
 <div id="container" onclick="listen()">
-    <div id="speech-out">TAP TO WAKE</div>
+    <div id="speech-out">TAP TO TALK</div>
     <div class="eyes">
         <div class="eye-wrapper"><div class="eye blink"></div></div>
         <div class="eye-wrapper"><div class="eye blink"></div></div>
     </div>
     <div id="mouth"></div>
+    
     <div id="controls">
         <label><input type="checkbox" id="always-on"> ALWAYS LISTENING</label>
+        <button class="small-btn" onclick="resetKey(event)">RESET API KEY</button>
     </div>
-    <div id="status">BRENDA v1.1</div>
+    
+    <div id="status">BRENDA v1.3 // STANDBY</div>
 </div>
 
 <script>
@@ -54,43 +71,31 @@
     const eyes = document.querySelectorAll('.eye');
     
     let isTalking = false;
+    let isThinking = false;
+    let mouthInterval;
     let API_KEY = localStorage.getItem("gemini_key");
 
-    // SETUP & SPEAK (Same as before)
     function setup() {
         if (!API_KEY) {
-            API_KEY = prompt("Enter Gemini Key:");
+            API_KEY = prompt("Enter Gemini API Key:");
             if (API_KEY) localStorage.setItem("gemini_key", API_KEY);
         }
         document.getElementById('overlay').style.display = 'none';
-        speak("Brenda online.");
+        
+        // Safety catch for fullscreen so it doesn't error out
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(e => console.log("Fullscreen ignored"));
+        }
+        speak("Brenda online. All systems green.");
     }
 
-    function speak(text) {
-        isTalking = true;
-        stopSquinting(); // Open eyes wide to talk
-        window.speechSynthesis.cancel(); 
-        const msg = new SpeechSynthesisUtterance(text);
-        msg.onstart = () => {
-            status.innerText = "Talking...";
-            mouthInterval = setInterval(() => {
-                mouth.style.height = Math.random() * 35 + "px";
-            }, 100);
-        };
-        msg.onend = () => {
-            isTalking = false;
-            clearInterval(mouthInterval);
-            mouth.style.height = "10px";
-            if (alwaysOnToggle.checked) setTimeout(listen, 400);
-        };
-        window.speechSynthesis.speak(msg);
+    function resetKey(event) {
+        event.stopPropagation(); // Stops the background from thinking you tapped to talk
+        localStorage.removeItem("gemini_key");
+        API_KEY = null;
+        alert("Key deleted. Refresh the page to enter a new one.");
+        location.reload();
     }
-
-    // SPEECH RECOGNITION
-    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognizer = new Recognition();
-    recognizer.continuous = true; 
-    recognizer.interimResults = false;
 
     function startSquinting() {
         eyeWrappers.forEach(el => el.classList.add('squint'));
@@ -102,44 +107,104 @@
         eyes.forEach(el => el.classList.remove('listening-glow'));
     }
 
+    function speak(text) {
+        isTalking = true;
+        isThinking = false;
+        stopSquinting();
+        
+        // Force ear off so she doesn't hear herself
+        try { recognizer.abort(); } catch(e) {} 
+
+        window.speechSynthesis.cancel(); 
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.rate = 1.1;
+        msg.pitch = 1.3;
+
+        msg.onstart = () => {
+            status.innerText = "Talking...";
+            mouthInterval = setInterval(() => {
+                mouth.style.height = Math.random() * 30 + "px";
+            }, 100);
+        };
+
+        msg.onend = () => {
+            isTalking = false;
+            clearInterval(mouthInterval);
+            mouth.style.height = "10px";
+            status.innerText = "Standby";
+            if (alwaysOnToggle.checked) setTimeout(listen, 600);
+        };
+        window.speechSynthesis.speak(msg);
+    }
+
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognizer = new Recognition();
+    recognizer.continuous = true;
+    recognizer.interimResults = false;
+
     recognizer.onresult = (event) => {
         const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
         
         if (alwaysOnToggle.checked) {
             if (transcript.includes("brenda")) {
-                stopSquinting();
-                askGemini(transcript.replace("brenda", ""));
+                const question = transcript.split("brenda").pop().trim();
+                if (question.length > 0) {
+                    speechOut.innerText = `You: "${question}"`;
+                    askGemini(question);
+                } else {
+                    speechOut.innerText = "You: Brenda?";
+                    speak("Yes?");
+                }
             }
         } else {
-            stopSquinting();
+            speechOut.innerText = `You: "${transcript}"`;
             askGemini(transcript);
         }
     };
 
     recognizer.onend = () => {
-        if (alwaysOnToggle.checked && !isTalking) listen();
-        else stopSquinting();
-    }
+        if (alwaysOnToggle.checked && !isTalking && !isThinking) {
+            listen();
+        } else {
+            stopSquinting();
+        }
+    };
 
     function listen() {
-        if (isTalking) return;
+        if (isTalking || isThinking) return;
         try {
             recognizer.start();
             status.innerText = "Listening...";
             startSquinting();
-        } catch(e) {}
+        } catch(e) {
+            startSquinting();
+        }
     }
 
     async function askGemini(question) {
+        if (!question) return;
+        isThinking = true;
         status.innerText = "Thinking...";
+        stopSquinting();
+        
+        // Turn off ear while waiting for Wi-Fi
+        try { recognizer.abort(); } catch(e) {} 
+
         try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
+            const response = await fetch(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ contents: [{ parts: [{ text: "Short witty answer: " + question }] }] })
+                body: JSON.stringify({ contents: [{ parts: [{ text: "You are Brenda, a witty and cute tiny robot. Answer in under 20 words. User says: " + question }] }] })
             });
             const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
             speak(data.candidates[0].content.parts[0].text);
-        } catch (e) { speak("Connection error."); }
+        } catch (e) {
+            speak("I have a brain error.");
+            isThinking = false;
+        }
     }
 </script>
+</body>
+</html>
