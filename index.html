@@ -8,7 +8,6 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#000000">
-    <link rel="apple-touch-icon" href="icon.png">
 
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; height: 100vh; width: 100vw; user-select: none; }
@@ -18,21 +17,26 @@
         .eyes { display: flex; gap: 60px; margin-bottom: 30px; pointer-events: none; }
         .eye-wrapper { transition: transform 0.3s ease; }
         
-        /* The SQUINT Logic */
+        /* THE EXPRESSIONS (Wrappers handle scaling to avoid breaking the blink animation) */
         .squint { transform: scaleY(0.25); }
+        .surprised { transform: scale(1.4); }
         
-        /* The EYE Logic */
-        .eye { width: 60px; height: 60px; background: #fff; border-radius: 50%; transition: background 0.3s, box-shadow 0.3s; }
-        .blink { animation: blink 4s infinite; }
+        /* THE EXPRESSIONS (Eyes handle shapes and colors) */
+        .eye { width: 60px; height: 60px; background: #fff; border-radius: 50%; transition: all 0.3s ease; }
         .listening-glow { background: #00ff00 !important; box-shadow: 0 0 20px #00ff00; }
+        
+        /* Emotion Shapes */
+        .happy { border-radius: 60px 60px 15px 15px; background: #ffcc00; box-shadow: 0 0 15px #ffcc00; } /* Yellow arches */
+        .sad { border-radius: 20px 20px 60px 60px; background: #00ccff; box-shadow: 0 0 15px #00ccff; }   /* Blue droops */
+        .angry { border-radius: 10px 60px 10px 10px; background: #ff0000; box-shadow: 0 0 15px #ff0000; }  /* Red slanted */
 
+        .blink { animation: blink 4s infinite; }
         @keyframes blink { 0%, 90%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
         
         #mouth { width: 50px; height: 10px; background: #fff; border-radius: 20px; transition: 0.1s; pointer-events: none; }
         #status { position: absolute; bottom: 30px; color: #444; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 3px; }
         #speech-out { position: absolute; top: 60px; color: #fff; width: 85%; text-align: center; font-size: 1.1rem; opacity: 0.8; }
         
-        /* Controls Layout */
         #controls { position: absolute; bottom: 60px; z-index: 5; color: #666; font-size: 0.7rem; display: flex; flex-direction: column; gap: 15px; align-items: center;}
         
         #overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:10; display:flex; justify-content:center; align-items:center; }
@@ -59,7 +63,7 @@
         <button class="small-btn" onclick="resetKey(event)">RESET API KEY</button>
     </div>
     
-    <div id="status">BRENDA v1.3 // STANDBY</div>
+    <div id="status">BRENDA v1.4 // STANDBY</div>
 </div>
 
 <script>
@@ -81,8 +85,6 @@
             if (API_KEY) localStorage.setItem("gemini_key", API_KEY);
         }
         document.getElementById('overlay').style.display = 'none';
-        
-        // Safety catch for fullscreen so it doesn't error out
         if (document.documentElement.requestFullscreen) {
             document.documentElement.requestFullscreen().catch(e => console.log("Fullscreen ignored"));
         }
@@ -90,30 +92,50 @@
     }
 
     function resetKey(event) {
-        event.stopPropagation(); // Stops the background from thinking you tapped to talk
+        event.stopPropagation();
         localStorage.removeItem("gemini_key");
-        API_KEY = null;
-        alert("Key deleted. Refresh the page to enter a new one.");
+        alert("Key deleted. Refresh the page.");
         location.reload();
     }
 
+    // --- VISUAL CONTROLS ---
+    function resetFace() {
+        eyeWrappers.forEach(el => el.className = 'eye-wrapper');
+        eyes.forEach(el => el.className = 'eye blink');
+    }
+
     function startSquinting() {
+        resetFace();
         eyeWrappers.forEach(el => el.classList.add('squint'));
         eyes.forEach(el => el.classList.add('listening-glow'));
     }
 
-    function stopSquinting() {
-        eyeWrappers.forEach(el => el.classList.remove('squint'));
-        eyes.forEach(el => el.classList.remove('listening-glow'));
+    function setEmotion(text) {
+        resetFace(); // Clear old emotions first
+        const t = text.toLowerCase();
+        
+        // The Keyword Emotion Engine
+        if (t.includes('sorry') || t.includes('sad') || t.includes('apologize') || t.includes('unfortunately')) {
+            eyes.forEach(e => e.classList.add('sad'));
+        } else if (t.includes('angry') || t.includes('mad') || t.includes('hate') || t.includes('stop')) {
+            eyes.forEach(e => e.classList.add('angry'));
+        } else if (t.includes('wow') || t.includes('oh!') || t.includes('really') || t.includes('whoa')) {
+            eyeWrappers.forEach(e => e.classList.add('surprised'));
+        } else if (t.includes('happy') || t.includes('great') || t.includes('yay') || t.includes('love') || t.includes('haha') || t.includes('!')) {
+            eyes.forEach(e => e.classList.add('happy'));
+        }
+        // If no keywords match, she just stays neutral.
     }
 
+    // --- LOGIC ---
     function speak(text) {
         isTalking = true;
         isThinking = false;
-        stopSquinting();
         
-        // Force ear off so she doesn't hear herself
         try { recognizer.abort(); } catch(e) {} 
+
+        // Analyze the text and set the face BEFORE she talks
+        setEmotion(text);
 
         window.speechSynthesis.cancel(); 
         const msg = new SpeechSynthesisUtterance(text);
@@ -132,6 +154,7 @@
             clearInterval(mouthInterval);
             mouth.style.height = "10px";
             status.innerText = "Standby";
+            resetFace(); // Go back to normal after speaking
             if (alwaysOnToggle.checked) setTimeout(listen, 600);
         };
         window.speechSynthesis.speak(msg);
@@ -165,8 +188,8 @@
     recognizer.onend = () => {
         if (alwaysOnToggle.checked && !isTalking && !isThinking) {
             listen();
-        } else {
-            stopSquinting();
+        } else if (!isTalking && !isThinking) {
+            resetFace();
         }
     };
 
@@ -185,9 +208,8 @@
         if (!question) return;
         isThinking = true;
         status.innerText = "Thinking...";
-        stopSquinting();
+        resetFace(); // Neutral face while thinking
         
-        // Turn off ear while waiting for Wi-Fi
         try { recognizer.abort(); } catch(e) {} 
 
         try {
@@ -201,7 +223,7 @@
             if (data.error) throw new Error(data.error.message);
             speak(data.candidates[0].content.parts[0].text);
         } catch (e) {
-            speak("I have a brain error.");
+            speak("Error. My brain hurts.");
             isThinking = false;
         }
     }
