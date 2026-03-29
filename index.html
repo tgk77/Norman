@@ -55,7 +55,7 @@
 
     function setup() {
         document.getElementById('overlay').style.display = 'none';
-        speak("Hello! I am Donald.");
+        speak("Hi! I am Brenda.");
     }
 
     function speak(text) {
@@ -118,7 +118,7 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     contents: [{ 
-                        parts: [{ text: "You are a tiny robot named Donald. You are witty and cute. Keep answers under 20 words. User says: " + question }] 
+                        parts: [{ text: "You are a tiny robot named Brenda. You are witty and cute. Keep answers under 20 words. User says: " + question }] 
                     }]
                 })
             });
