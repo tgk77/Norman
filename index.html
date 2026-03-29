@@ -109,6 +109,20 @@
         const transcript = event.results[0][0].transcript;
         speechOut.innerText = `You: "${transcript}"`;
         askGemini(transcript);
+        recognizer.onresult = (event) => {
+    const result = event.results[0][0];
+    const transcript = result.transcript.toLowerCase();
+    const confidence = result.confidence; // How sure the phone is (0.0 to 1.0)
+
+    // Only wake up if it hears "Brenda" AND is at least 85% sure
+    if (transcript.includes("brenda") && confidence > 0.85) {
+        let cleanQuestion = transcript.replace("brenda", "").trim();
+        speechOut.innerText = `You: "${cleanQuestion}"`;
+        askGemini(cleanQuestion);
+    } else {
+        console.log(`Ignored noise. Confidence was: ${confidence.toFixed(2)}`);
+    }
+};
     };
 
     function listen() {
