@@ -47,16 +47,19 @@
     const speechOut = document.getElementById('speech-out');
     const status = document.getElementById('status');
     
-    // 1. YOUR API KEY (No braces needed here)
-    const API_KEY = "AIzaSyAiKf5aQ-qJSH4aZbT1-XtaC8sfDVaonQo";
+    let API_KEY = localStorage.getItem("gemini_key");
 
-    let mouthInterval;
-    let isTalking = false;
-
-    function setup() {
-        document.getElementById('overlay').style.display = 'none';
-        speak("Hi! I am Brenda.");
+function setup() {
+    if (!API_KEY) {
+        // If there's no key saved, ask the user for it
+        API_KEY = prompt("Please enter your Gemini API Key:");
+        if (API_KEY) {
+            localStorage.setItem("gemini_key", API_KEY);
+        }
     }
+    document.getElementById('overlay').style.display = 'none';
+    speak("Hello! I am Donald. System online.");
+}
 
     function speak(text) {
         isTalking = true;
