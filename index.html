@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stack-chan Android</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', Courier, monospace; }
+        #container { width: 100vw; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        
+        /* The Face */
+        .eyes { display: flex; gap: 60px; margin-bottom: 30px; }
+        .eye { width: 50px; height: 50px; background: #fff; border-radius: 50%; transition: 0.1s; }
+        #mouth { width: 40px; height: 10px; background: #fff; border-radius: 20px; transition: 0.1s; }
+
+        /* Animations */
+        .blink { animation: blink 4s infinite; }
+        @keyframes blink { 0%, 90%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+        
+        /* UI Elements */
+        #status { position: absolute; bottom: 20px; color: #333; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; }
+        #speech-out { position: absolute; top: 40px; color: #fff; width: 80%; text-align: center; font-size: 1.2rem; opacity: 0.7; }
+    </style>
+</head>
+<body onclick="listen()">
+
+<div id="container">
+    <div id="speech-out">TAP TO TALK</div>
+    <div class="eyes">
+        <div id="left-eye" class="eye blink"></div>
+        <div id="right-eye" class="eye blink"></div>
+    </div>
+    <div id="mouth"></div>
+    <div id="status">Stack-chan v1.0 // Sleeping</div>
+</div>
+
+<script>
+    const mouth = document.getElementById('mouth');
+    const speechOut = document.getElementById('speech-out');
+    const status = document.getElementById('status');
+
+    // 1. VOICE: Text to Speech
+    function speak(text) {
+        const msg = new SpeechSynthesisUtterance(text);
+        msg.rate = 1.1;
+        msg.pitch = 1.2; // Slightly higher for a "cute" robot feel
+
+        // Mouth animation synced to speech
+        msg.onstart = () => {
+            status.innerText = "Talking...";
+            mouthInterval = setInterval(() => {
+                mouth.style.height = Math.random() * 30 + "px";
+            }, 100);
+        };
+
+        msg.onend = () => {
+            clearInterval(mouthInterval);
+            mouth.style.height = "10px";
+            status.innerText = "Listening...";
+        };
+
+        window.speechSynthesis.speak(msg);
+    }
+
+    // 2. EARS: Speech Recognition
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognizer = new Recognition();
+
+    recognizer.onstart = () => {
+        status.innerText = "Listening...";
+        speechOut.innerText = "I'm listening...";
+    };
+
+    recognizer.onresult = (event) => {
+        const transcript = event.results[0][0].transcript.toLowerCase();
+        speechOut.innerText = `"${transcript}"`;
+        processCommand(transcript);
+    };
+
+    function listen() {
+        try { recognizer.start(); } catch(e) { console.log("Already listening"); }
+    }
+
+    // 3. BRAIN: Simple Logic (We can add AI API here later!)
+    function processCommand(cmd) {
+        if (cmd.includes("hello") || cmd.includes("hi")) {
+            speak("Hello! I am Stack-chan. It is nice to meet you.");
+        } else if (cmd.includes("how are you")) {
+            speak("I am feeling very digital today! My battery is full and my circuits are happy.");
+        } else if (cmd.includes("who are you")) {
+            speak("I am your Android desktop companion. I have no body, but I have a big personality.");
+        } else {
+            speak("I heard you say " + cmd + ". I am still learning how to understand that.");
+        }
+    }
+</script>
+</body>
+</html>
