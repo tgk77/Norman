@@ -47,19 +47,17 @@
     const speechOut = document.getElementById('speech-out');
     const status = document.getElementById('status');
     
-    // API KEY
+    // 1. YOUR API KEY (No braces needed here)
     const API_KEY = "AIzaSyAqpNL10AYzBzwyc2BuXMG-2nBbquZiqX0";
 
     let mouthInterval;
     let isTalking = false;
 
-    // Initialize Speech
     function setup() {
         document.getElementById('overlay').style.display = 'none';
         speak("Hello! I am Donald.");
     }
 
-    // 1. VOICE: Text to Speech
     function speak(text) {
         isTalking = true;
         window.speechSynthesis.cancel(); 
@@ -87,25 +85,16 @@
         window.speechSynthesis.speak(msg);
     }
 
-    // 2. EARS: Speech Recognition
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!Recognition) {
-        alert("This browser doesn't support Speech Recognition. Please use Chrome.");
+        alert("Please use Chrome on Android for Speech support.");
     }
     
     const recognizer = new Recognition();
-    recognizer.continuous = false;
-    recognizer.interimResults = false;
-
     recognizer.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         speechOut.innerText = `You: "${transcript}"`;
         askGemini(transcript);
-    };
-
-    recognizer.onerror = (err) => {
-        status.innerText = "Error hearing you...";
-        console.error(err);
     };
 
     function listen() {
@@ -113,15 +102,15 @@
         try { 
             recognizer.start(); 
             status.innerText = "Listening..."; 
-        } catch(e) {
-            console.log("Recognition already started.");
-        }
+        } catch(e) {}
     }
 
-    // 3. BRAIN: Google Gemini AI
+    // 2. THE FIXED BRAIN FUNCTION
     async function askGemini(question) {
         status.innerText = "Thinking...";
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key={AIzaSyAqpNL10AYzBzwyc2BuXMG-2nBbquZiqX0}`;
+        
+        // FIXED: Using the variable and the 'latest' stable model name
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
         
         try {
             const response = await fetch(url, {
@@ -137,16 +126,16 @@
             const data = await response.json();
             
             if (data.error) {
-                throw new Error(data.error.message);
+                console.error(data.error);
+                speak("Brain error: " + data.error.message);
+                return;
             }
 
             const aiText = data.candidates[0].content.parts[0].text;
             speak(aiText);
         } catch (error) {
             console.error(error);
-            speak("I'm having trouble.");
+            speak("I'm having trouble connecting.");
         }
     }
 </script>
-</body>
-</html>
