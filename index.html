@@ -47,7 +47,7 @@
     const speechOut = document.getElementById('speech-out');
     const status = document.getElementById('status');
     
-    // ⚠️ REPLACE THIS WITH YOUR REAL API KEY FROM https://aistudio.google.com/
+    // API KEY
     const API_KEY = "AIzaSyAqpNL10AYzBzwyc2BuXMG-2nBbquZiqX0";
 
     let mouthInterval;
@@ -109,20 +109,17 @@
     };
 
     function listen() {
-        if (isTalking) return; // Don't listen if the robot is currently talking
+        if (isTalking) return; 
         try { 
             recognizer.start(); 
             status.innerText = "Listening..."; 
         } catch(e) {
-            console.log("Recognition already started or failed.");
+            console.log("Recognition already started.");
         }
     }
 
     // 3. BRAIN: Google Gemini AI
     async function askGemini(question) {
-       
-        }
-
         status.innerText = "Thinking...";
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
         
@@ -147,7 +144,7 @@
             speak(aiText);
         } catch (error) {
             console.error(error);
-            speak("My brain is foggy. Is the API key correct?");
+            speak("I'm having trouble thinking. Please check your internet or API key.");
         }
     }
 </script>
