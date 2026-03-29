@@ -3,60 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stack-chan Android</title>
+    <title>AI Stack-chan</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New', Courier, monospace; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
         #container { width: 100vw; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         
-        /* The Face */
+        /* Face Styling */
         .eyes { display: flex; gap: 60px; margin-bottom: 30px; }
-        .eye { width: 50px; height: 50px; background: #fff; border-radius: 50%; transition: 0.1s; }
-        #mouth { width: 40px; height: 10px; background: #fff; border-radius: 20px; transition: 0.1s; }
+        .eye { width: 60px; height: 60px; background: #fff; border-radius: 50%; transition: 0.1s; }
+        #mouth { width: 50px; height: 10px; background: #fff; border-radius: 20px; transition: 0.1s; }
 
         /* Animations */
         .blink { animation: blink 4s infinite; }
         @keyframes blink { 0%, 90%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
         
-        /* UI Elements */
-        #status { position: absolute; bottom: 20px; color: #333; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; }
-        #speech-out { position: absolute; top: 40px; color: #fff; width: 80%; text-align: center; font-size: 1.2rem; opacity: 0.7; }
+        /* Text UI */
+        #status { position: absolute; bottom: 30px; color: #444; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 3px; }
+        #speech-out { position: absolute; top: 60px; color: #fff; width: 85%; text-align: center; font-size: 1.1rem; line-height: 1.4; opacity: 0.8; font-weight: 300; }
+        
+        /* Overlay for Start */
+        #overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10; display:flex; justify-content:center; align-items:center; }
+        button { padding: 20px 40px; font-size: 1.2rem; background: #fff; border: none; border-radius: 50px; cursor: pointer; }
     </style>
 </head>
 <body onclick="listen()">
 
+<div id="overlay" onclick="setup()"><button>WAKE UP</button></div>
+
 <div id="container">
-    <div id="speech-out">TAP TO TALK</div>
+    <div id="speech-out">TAP TO TALK TO ME</div>
     <div class="eyes">
-        <div id="left-eye" class="eye blink"></div>
-        <div id="right-eye" class="eye blink"></div>
+        <div class="eye blink"></div>
+        <div class="eye blink"></div>
     </div>
     <div id="mouth"></div>
-    <div id="status">Stack-chan v1.0 // Sleeping</div>
+    <div id="status">AI BOT v1.0 // STANDBY</div>
 </div>
 
 <script>
     const mouth = document.getElementById('mouth');
     const speechOut = document.getElementById('speech-out');
     const status = document.getElementById('status');
+    const API_KEY = "AIzaSyDr7URdQQeaifElaSpncUIUNJ0nX3OC3m0";
+
+    // Initialize Speech
+    function setup() {
+        document.getElementById('overlay').style.display = 'none';
+        speak("System online. Hello! I am ready to chat.");
+    }
 
     // 1. VOICE: Text to Speech
     function speak(text) {
+        window.speechSynthesis.cancel(); // Stop any current talking
         const msg = new SpeechSynthesisUtterance(text);
-        msg.rate = 1.1;
-        msg.pitch = 1.2; // Slightly higher for a "cute" robot feel
+        msg.rate = 1.1; 
+        msg.pitch = 1.3; 
 
-        // Mouth animation synced to speech
         msg.onstart = () => {
             status.innerText = "Talking...";
             mouthInterval = setInterval(() => {
-                mouth.style.height = Math.random() * 30 + "px";
+                mouth.style.height = Math.random() * 35 + "px";
+                mouth.style.width = (40 + Math.random() * 20) + "px";
             }, 100);
         };
 
         msg.onend = () => {
             clearInterval(mouthInterval);
             mouth.style.height = "10px";
-            status.innerText = "Listening...";
+            mouth.style.width = "50px";
+            status.innerText = "Waiting for you...";
         };
 
         window.speechSynthesis.speak(msg);
@@ -64,33 +79,41 @@
 
     // 2. EARS: Speech Recognition
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) alert("Gah! This browser doesn't support Speech. Use Chrome on Android.");
     const recognizer = new Recognition();
 
-    recognizer.onstart = () => {
-        status.innerText = "Listening...";
-        speechOut.innerText = "I'm listening...";
-    };
-
     recognizer.onresult = (event) => {
-        const transcript = event.results[0][0].transcript.toLowerCase();
-        speechOut.innerText = `"${transcript}"`;
-        processCommand(transcript);
+        const transcript = event.results[0][0].transcript;
+        speechOut.innerText = `You: "${transcript}"`;
+        askGemini(transcript);
     };
 
     function listen() {
-        try { recognizer.start(); } catch(e) { console.log("Already listening"); }
+        try { recognizer.start(); status.innerText = "Listening..."; } catch(e) {}
     }
 
-    // 3. BRAIN: Simple Logic (We can add AI API here later!)
-    function processCommand(cmd) {
-        if (cmd.includes("hello") || cmd.includes("hi")) {
-            speak("Hello! I am Norman. It is nice to meet you.");
-        } else if (cmd.includes("how are you")) {
-            speak("I am feeling very digital today! My battery is full and my circuits are happy.");
-        } else if (cmd.includes("who are you")) {
-            speak("I am your Android desktop companion. I have no body, but I have a big personality.");
-        } else {
-            speak("I heard you say " + cmd + ". I am still learning how to understand that.");
+    // 3. BRAIN: Google Gemini AI
+    async function askGemini(question) {
+        status.innerText = "Thinking...";
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
+        
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ 
+                        parts: [{ text: "You are a tiny, witty robot living inside a phone. Your name is Stack-chan. Keep your answers very short (1-2 sentences) and act like a cute companion. User says: " + question }] 
+                    }]
+                })
+            });
+
+            const data = await response.json();
+            const aiText = data.candidates[0].content.parts[0].text;
+            speak(aiText);
+        } catch (error) {
+            console.error(error);
+            speak("I'm having trouble connecting to my brain right now.");
         }
     }
 </script>
