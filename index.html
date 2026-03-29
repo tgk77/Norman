@@ -7,7 +7,34 @@
     <style>
         body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; height: 100vh; width: 100vw; }
         #container { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; }
-        
+      <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000"> ```
+
+### 2. The "Magic" Step (On your Phone)
+Even with that code, if you just type the URL in Chrome, you'll still see the address bar. You have to "Launch" it as an app:
+
+1.  Open your GitHub Pages URL in **Chrome** on your Android phone.
+2.  Tap the **three dots** in the top-right corner.
+3.  Select **"Add to Home screen."**
+4.  Go to your phone's home screen and tap the new **Donald icon**.
+
+**Result:** It will now open in a dedicated window with no address bar, no tabs, and no distracting Google UI. Donald will look like a native robot app!
+
+---
+
+### Pro-Tip: The "Manual" Fullscreen Toggle
+If you want a button *inside* the app to force it into fullscreen (immersive mode) while you're using it, you can add this to your `setup()` function:
+
+```javascript
+function setup() {
+    // Attempt to go immersive fullscreen
+    if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen();
+    }
+    document.getElementById('overlay').style.display = 'none';
+    speak("Hello! I am Donald. Fullscreen engaged.");
+}  
         /* Face Styling */
         .eyes { display: flex; gap: 60px; margin-bottom: 30px; pointer-events: none; }
         .eye { width: 60px; height: 60px; background: #fff; border-radius: 50%; transition: 0.1s; }
