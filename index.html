@@ -15,15 +15,17 @@
         #container { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; cursor: pointer; }
         
         .eyes { display: flex; gap: 60px; margin-bottom: 30px; pointer-events: none; }
-        .eye { width: 60px; height: 60px; background: #fff; border-radius: 50%; transition: 0.1s; }
+        .eye { width: 60px; height: 60px; background: #fff; border-radius: 50%; transition: 0.2s; }
         #mouth { width: 50px; height: 10px; background: #fff; border-radius: 20px; transition: 0.1s; pointer-events: none; }
 
         .blink { animation: blink 4s infinite; }
         @keyframes blink { 0%, 90%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
         
+        /* Squinting eyes style */
+        .eye.squint { transform: scaleY(0.2); background: #00ff00; }
+
         #status { position: absolute; bottom: 30px; color: #444; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 3px; pointer-events: none; }
         #speech-out { position: absolute; top: 60px; color: #fff; width: 85%; text-align: center; font-size: 1.1rem; line-height: 1.4; opacity: 0.8; font-weight: 300; pointer-events: none; }
-        
         #controls { position: absolute; bottom: 60px; z-index: 5; color: #444; font-size: 0.7rem; letter-spacing: 1px; }
         
         #overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:10; display:flex; justify-content:center; align-items:center; }
@@ -43,11 +45,9 @@
         <div class="eye blink"></div>
     </div>
     <div id="mouth"></div>
-    
     <div id="controls">
         <label><input type="checkbox" id="always-on"> ALWAYS LISTENING</label>
     </div>
-    
     <div id="status">BRENDA v1.0 // STANDBY</div>
 </div>
 
@@ -65,14 +65,12 @@
         if (document.documentElement.requestFullscreen) {
             document.documentElement.requestFullscreen().catch(e => console.log("Fullscreen blocked"));
         }
-
         if (!API_KEY) {
             API_KEY = prompt("Please enter your Gemini API Key:");
             if (API_KEY) { localStorage.setItem("gemini_key", API_KEY); }
         }
-
         document.getElementById('overlay').style.display = 'none';
-        speak("Hello! I am Brenda. Ready to help.");
+        speak("Hello! I am Brenda. System online.");
     }
 
     function speak(text) {
@@ -96,34 +94,30 @@
             mouth.style.height = "10px";
             mouth.style.width = "50px";
             status.innerText = "Waiting...";
-            
-            // Loop back to listening if Always-On is active
-            if (alwaysOnToggle.checked) {
-                setTimeout(listen, 500); 
-            }
+            if (alwaysOnToggle.checked) { setTimeout(listen, 600); }
         };
-
         window.speechSynthesis.speak(msg);
     }
 
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognizer = new Recognition();
-    recognizer.continuous = false; // We manage continuity ourselves for better accuracy
+    // Setting continuous to true might reduce the frequency of Samsung's bleeps
+    recognizer.continuous = true; 
+    recognizer.interimResults = false;
 
     recognizer.onresult = (event) => {
-        const result = event.results[0][0];
-        const transcript = result.transcript.toLowerCase();
-        const confidence = result.confidence;
+        // Stop squinting once we hear something
+        document.querySelectorAll('.eye').forEach(e => e.classList.remove('squint'));
+        
+        const last = event.results.length - 1;
+        const transcript = event.results[last][0].transcript.toLowerCase();
+        const confidence = event.results[last][0].confidence;
 
-        // If Always-On is ON, check for wake word. If OFF, just respond to everything.
         if (alwaysOnToggle.checked) {
-            if (transcript.includes("brenda") && confidence > 0.8) {
+            if (transcript.includes("brenda") && confidence > 0.75) {
                 let cleanQuestion = transcript.replace("brenda", "").trim();
                 speechOut.innerText = `You: "${cleanQuestion}"`;
                 askGemini(cleanQuestion);
-            } else {
-                console.log("Wake word not detected. Listening again...");
-                // Handled by onend to prevent recursion stack errors
             }
         } else {
             speechOut.innerText = `You: "${transcript}"`;
@@ -132,7 +126,7 @@
     };
 
     recognizer.onend = () => {
-        // Automatically restart if Always Listening is checked and Brenda isn't talking
+        document.querySelectorAll('.eye').forEach(e => e.classList.remove('squint'));
         if (alwaysOnToggle.checked && !isTalking) {
             listen();
         }
@@ -143,13 +137,15 @@
         try { 
             recognizer.start(); 
             status.innerText = "Listening..."; 
-        } catch(e) {}
+            document.querySelectorAll('.eye').forEach(e => e.classList.add('squint'));
+        } catch(e) {
+            // Already listening
+        }
     }
 
     async function askGemini(question) {
         status.innerText = "Thinking...";
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
-        
         try {
             const response = await fetch(url, {
                 method: "POST",
@@ -158,14 +154,10 @@
                     contents: [{ parts: [{ text: "You are a tiny robot named Brenda. Keep answers under 20 words. User says: " + question }] }]
                 })
             });
-
             const data = await response.json();
             if (data.error) throw new Error(data.error.message);
-
-            const aiText = data.candidates[0].content.parts[0].text;
-            speak(aiText);
+            speak(data.candidates[0].content.parts[0].text);
         } catch (error) {
-            console.error(error);
             speak("I'm having trouble connecting.");
         }
     }
